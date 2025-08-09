@@ -13,7 +13,10 @@ from tkinter import ttk, filedialog, messagebox
 
 ROOT = Path(__file__).parent
 FFMPEG_DIR = ROOT / "ffmpeg"
-SAVES_DIR = ROOT / "saves"
+if getattr(sys, 'frozen', False):
+    ROOT = Path(sys.executable).parent
+else:
+    ROOT = Path(__file__).parent
 SAVES_DIR.mkdir(exist_ok=True)
 
 if (FFMPEG_DIR / "ffmpeg.exe").exists() or (FFMPEG_DIR / "ffmpeg").exists():
