@@ -71,7 +71,7 @@ def ffprobe_duration(path):
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("VideoCodexConvertor DEV 1.02")
+        self.title("VideoCodexConvertor DEV 1.03")
         self.geometry("780x520")
 
         self.notebook = ttk.Notebook(self)
