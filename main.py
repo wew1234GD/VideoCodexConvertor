@@ -60,7 +60,6 @@ def run_subprocess(cmd, write_log=None):
 
 
 def ffprobe_duration(path):
-    """Получаем длительность файла в секундах с помощью ffprobe. Вернёт float или None."""
     cmd = [FFPROBE_BIN, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(path)]
     try:
         out = subprocess.check_output(cmd, stderr=subprocess.STDOUT, text=True)
@@ -72,7 +71,7 @@ def ffprobe_duration(path):
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("VideoCodexConvertor DEV 1.03")
+        self.title("VideoCodexConvertor DEV 1.04")
         self.geometry("780x520")
 
         self.notebook = ttk.Notebook(self)
@@ -81,14 +80,17 @@ class App(tk.Tk):
         self.conv_frame = ttk.Frame(self.notebook)
         self.comp_prec_frame = ttk.Frame(self.notebook)
         self.comp_fast_frame = ttk.Frame(self.notebook)
+        self.sound_frame = ttk.Frame(self.notebook)
 
         self.notebook.add(self.conv_frame, text="конвертация")
         self.notebook.add(self.comp_prec_frame, text="сжатие (точное)")
         self.notebook.add(self.comp_fast_frame, text="сжатие (быстрое)")
+        self.notebook.add(self.sound_frame, text="Эквалайзер")
 
         self._build_conversion_tab()
         self._build_compression_precise_tab()
         self._build_compression_fast_tab()
+        self._build_sound_tab()
 
         log_label = ttk.Label(self, text="Лог:")
         log_label.pack(anchor=tk.W, padx=12)
@@ -184,6 +186,72 @@ class App(tk.Tk):
 
         ttk.Label(row3, text="   (одно-проходное кодирование быстрое но менее точное)").pack(side=tk.LEFT)
 
+    def _build_sound_tab(self):
+        f = self.sound_frame
+        padx = 8; pady = 6
+
+        row = ttk.Frame(f)
+        row.pack(fill=tk.X, padx=12, pady=pady)
+        ttk.Label(row, text="Аудио файл:").pack(side=tk.LEFT)
+        self.sound_input_var = tk.StringVar()
+        ttk.Entry(row, textvariable=self.sound_input_var, width=60).pack(side=tk.LEFT, padx=6)
+        ttk.Button(row, text="Обзор", command=self.sound_browse).pack(side=tk.LEFT)
+
+        row_ext = ttk.Frame(f)
+        row_ext.pack(fill=tk.X, padx=12, pady=pady)
+        ttk.Label(row_ext, text="Выходное расширение (mp3, wav, flac, aac, ogg):").pack(side=tk.LEFT)
+        self.sound_ext_var = tk.StringVar(value="mp3")
+        ttk.Entry(row_ext, textvariable=self.sound_ext_var, width=10).pack(side=tk.LEFT, padx=6)
+
+        params_frame = ttk.Frame(f)
+        params_frame.pack(fill=tk.X, padx=12, pady=pady)
+
+        ttk.Label(params_frame, text="Скорость (tempo, 0.25-4.0):").grid(row=0, column=0, sticky=tk.W)
+        self.sound_speed_var = tk.DoubleVar(value=1.0)
+        ttk.Scale(params_frame, from_=0.25, to=4.0, variable=self.sound_speed_var, orient=tk.HORIZONTAL).grid(row=0, column=1, sticky=tk.EW, padx=6)
+        self._add_small_entry(params_frame, self.sound_speed_var, 0, 2)
+
+        ttk.Label(params_frame, text="Басс (dB, -20..+20):").grid(row=1, column=0, sticky=tk.W)
+        self.sound_bass_var = tk.IntVar(value=0)
+        ttk.Scale(params_frame, from_=-20, to=20, variable=self.sound_bass_var, orient=tk.HORIZONTAL).grid(row=1, column=1, sticky=tk.EW, padx=6)
+        self._add_small_entry(params_frame, self.sound_bass_var, 1, 2)
+
+        ttk.Label(params_frame, text="Требл (dB, -20..+20):").grid(row=2, column=0, sticky=tk.W)
+        self.sound_treble_var = tk.IntVar(value=0)
+        ttk.Scale(params_frame, from_=-20, to=20, variable=self.sound_treble_var, orient=tk.HORIZONTAL).grid(row=2, column=1, sticky=tk.EW, padx=6)
+        self._add_small_entry(params_frame, self.sound_treble_var, 2, 2)
+
+        ttk.Label(params_frame, text="Гейн (dB, -20..+20):").grid(row=3, column=0, sticky=tk.W)
+        self.sound_gain_var = tk.IntVar(value=0)
+        ttk.Scale(params_frame, from_=-20, to=20, variable=self.sound_gain_var, orient=tk.HORIZONTAL).grid(row=3, column=1, sticky=tk.EW, padx=6)
+        self._add_small_entry(params_frame, self.sound_gain_var, 3, 2)
+
+        ttk.Label(params_frame, text="Аудио-битрейт (кбит/с, 32-320):").grid(row=4, column=0, sticky=tk.W)
+        self.sound_bitrate_var = tk.IntVar(value=192)
+        bitrate_entry = ttk.Entry(params_frame, width=8, textvariable=self.sound_bitrate_var)
+        bitrate_entry.grid(row=4, column=1, sticky=tk.W, padx=6)
+
+        params_frame.columnconfigure(1, weight=1)
+
+        # info and buttons
+        #row2 = ttk.Frame(f)
+        #row2.pack(fill=tk.X, padx=12, pady=pady)
+        #self.sound_info_label = ttk.Label(row2, text="Длительность: —")
+        #self.sound_info_label.pack(side=tk.LEFT)
+        #ttk.Button(row2, text="Обновить инфо", command=self.update_sound_info).pack(side=tk.LEFT, padx=8)
+
+        row3 = ttk.Frame(f)
+        row3.pack(fill=tk.X, padx=12, pady=pady)
+        self.sound_apply_btn = ttk.Button(row3, text="Применить изменения и сохранить", command=self.start_sound_processing)
+        self.sound_apply_btn.pack(side=tk.LEFT)
+
+        ttk.Label(row3, text="   (создаст новый аудиофайл в папке saves)").pack(side=tk.LEFT)
+
+    def _add_small_entry(self, parent, var, r, c):
+        # small entry next to scale to show numeric value
+        e = ttk.Entry(parent, width=6, textvariable=var)
+        e.grid(row=r, column=c, sticky=tk.E)
+
     def conv_browse(self):
         p = filedialog.askopenfilename(title="Выберите файл для конвертации")
         if p:
@@ -199,6 +267,14 @@ class App(tk.Tk):
         if p:
             self.comp_fast_input_var.set(p)
 
+    def sound_browse(self):
+        p = filedialog.askopenfilename(
+            title="Выберите аудио файл",
+            filetypes=[("Аудио файлы", "*.mp3 *.wav *.ogg *.aac *.flac" )]
+        )
+        if p:
+            self.sound_input_var.set(p)
+            
     def start_conversion(self):
         input_path = self.conv_input_var.get().strip()
         ext = self.conv_ext_var.get().strip().lstrip('.')
@@ -382,6 +458,91 @@ class App(tk.Tk):
             self.write_log(f"Ошибка: {e}")
         finally:
             self.after(0, lambda: self.comp_fast_btn.configure(state=tk.NORMAL))
+
+    def start_sound_processing(self):
+        input_path = self.sound_input_var.get().strip()
+        if not input_path:
+            messagebox.showerror("Ошибка", "Выберите аудио файл")
+            return
+        ext = self.sound_ext_var.get().strip().lstrip('.').lower()
+        if not ext:
+            messagebox.showerror("Ошибка", "Укажите выходное расширение")
+            return
+        try:
+            speed = float(self.sound_speed_var.get())
+            bass = int(self.sound_bass_var.get())
+            treble = int(self.sound_treble_var.get())
+            gain = int(self.sound_gain_var.get())
+            bitrate = int(self.sound_bitrate_var.get())
+        except Exception:
+            messagebox.showerror("Ошибка", "Неверные параметры")
+            return
+
+        self.sound_apply_btn.configure(state=tk.DISABLED)
+        thread = threading.Thread(target=self._sound_worker, args=(input_path, ext, speed, bass, treble, gain, bitrate), daemon=True)
+        thread.start()
+
+    def _sound_worker(self, input_path, ext, speed, bass, treble, gain, bitrate):
+        try:
+            inp = Path(input_path)
+            if not inp.exists():
+                self.write_log(f"Файл не найден: {input_path}")
+                return
+
+            out_name = inp.stem + f"_sound.{ext}"
+            out_path = SAVES_DIR / out_name
+            out_path = unique_path(out_path)
+
+            af_parts = []
+
+            if abs(speed - 1.0) > 1e-6:
+                factors = []
+                val = speed
+                while val < 0.5:
+                    factors.append(0.5)
+                    val /= 0.5
+                while val > 2.0:
+                    factors.append(2.0)
+                    val /= 2.0
+                factors.append(val)
+                af_parts.extend([f"atempo={f:.6g}" for f in factors if f > 0])
+
+            if bass != 0:
+                af_parts.append(f"equalizer=f=100:width_type=h:width=200:g={bass}")
+
+            if treble != 0:
+                af_parts.append(f"equalizer=f=6000:width_type=h:width=2000:g={treble}")
+
+            if gain != 0:
+                af_parts.append(f"volume={gain}dB")
+
+            cmd = [FFMPEG_BIN, '-y', '-i', str(inp)]
+            if af_parts:
+                af_filter = ','.join(af_parts)
+                cmd += ['-af', af_filter]
+
+            codec_map = {'mp3': 'libmp3lame', 'wav': 'pcm_s16le', 'flac': 'flac', 'aac': 'aac', 'm4a': 'aac', 'ogg': 'libvorbis'}
+            codec = codec_map.get(ext, 'copy')
+            if codec != 'copy':
+                cmd += ['-c:a', codec]
+                cmd += ['-b:a', f"{bitrate}k"]
+            else:
+                cmd += ['-c', 'copy']
+
+            cmd.append(str(out_path))
+
+            self.write_log(f"Команда (эквалайзер): {' '.join(cmd)}")
+            rc = run_subprocess(cmd, write_log=self.write_log)
+
+            if out_path.exists():
+                self.write_log(f"Готово: {out_path}")
+            else:
+                self.write_log("Не удалось создать аудиофайл")
+
+        except Exception as e:
+            self.write_log(f"Ошибка: {e}")
+        finally:
+            self.after(0, lambda: self.sound_apply_btn.configure(state=tk.NORMAL))
 
 
 if __name__ == '__main__':
